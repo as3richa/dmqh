@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc --build",
-    "lint": "eslint \"src/*.ts\" --quiet"
+    "lint": "eslint \"src/*.ts\" --quiet --fix"
   },
   "author": "as3richa",
   "license": "MIT",

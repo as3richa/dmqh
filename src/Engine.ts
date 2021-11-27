@@ -31,6 +31,34 @@ class Engine {
       window.requestAnimationFrame(drawForever);
     };
     window.requestAnimationFrame(drawForever.bind(this));
+
+    window.addEventListener("keydown", (event) => {
+      switch (event.key) {
+        case "Up":
+        case "ArrowUp":
+        case "w":
+          this.game.play(Move.Up);
+          break;
+
+        case "Right":
+        case "ArrowRight":
+        case "d":
+          this.game.play(Move.Right);
+          break;
+
+        case "Down":
+        case "ArrowDown":
+        case "s":
+          this.game.play(Move.Down);
+          break;
+
+        case "Left":
+        case "ArrowLeft":
+        case "a":
+          this.game.play(Move.Left);
+          break;
+      }
+    });
   }
 
   private drawFrame(time: number): void {
