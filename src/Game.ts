@@ -30,7 +30,7 @@ type MergeEvent = {
   value: number;
 };
 
-type Events = {
+type GameEvents = {
   spawns: Array<SpawnEvent>;
   moves: Array<MoveEvent>;
   merges: Array<MergeEvent>;
@@ -42,11 +42,11 @@ type Events = {
 class Game {
   private grid: Uint32Array;
   private score: number;
-  private readonly onEvents: (events: Events) => void;
+  private readonly onEvents: (events: GameEvents) => void;
 
   private static readonly fourProbability = 0.05;
 
-  constructor(onEvents: (events: Events) => void) {
+  constructor(onEvents: (events: GameEvents) => void) {
     this.grid = new Uint32Array(16);
     this.onEvents = onEvents;
     this.reset();
@@ -66,7 +66,7 @@ class Game {
     });
   }
 
-  play(move: Move) {
+  play(move: Move): void {
     const x00 = move == Move.Down ? 3 : 0;
     const y00 = move == Move.Right ? 3 : 0;
 
@@ -204,7 +204,7 @@ class Game {
     return this.grid[4 * y + x];
   }
 
-  private set(x: number, y: number, value: number) {
+  private set(x: number, y: number, value: number): void {
     this.grid[4 * y + x] = value;
   }
 }
