@@ -1,0 +1,20 @@
+{
+  "name": "dmqh",
+  "version": "0.0.1",
+  "description": "2048 clone in TypeScript",
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint \"src/*.ts\" --quiet"
+  },
+  "author": "as3richa",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "eslint": "^8.3.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.5.0",
+    "typescript": "^4.5.2"
+  }
+}
