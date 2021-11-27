@@ -49,17 +49,24 @@ class Engine {
   private onEvents(events: GameEvents): void {
     const time = performance.now();
 
-    this.entities.length = 0;
+    this.entities = [];
 
     const cellToCanvas = (x: number, y: number) => {
       return { x: (x + 0.5) * Engine.cellSize, y: (y + 0.5) * Engine.cellSize };
     };
 
+    for (const static_ of events.statics) {
+      const { x, y } = cellToCanvas(static_.x, static_.y);
+
+      this.entities.push({
+        primitive: new RedRectangle(),
+        animator: new StaticAnimator({ x, y, scale: Engine.cellSize, opacity: 1.0 }),
+      });
+    }
+
     for (const move of events.moves) {
       const { x: x0, y: y0 } = cellToCanvas(move.x0, move.y0);
       const { x, y } = cellToCanvas(move.x, move.y);
-
-      console.log(move);
 
       this.entities.push({
         primitive: new RedRectangle(),

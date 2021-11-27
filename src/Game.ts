@@ -11,6 +11,12 @@ type SpawnEvent = {
   value: number;
 };
 
+type StaticEvent = {
+  x: number;
+  y: number;
+  value: number;
+};
+
 type MoveEvent = {
   x0: number;
   y0: number;
@@ -30,12 +36,17 @@ type MergeEvent = {
   value: number;
 };
 
+type ScoreEvent = {
+  score: number;
+  difference: number | null;
+}
+
 type GameEvents = {
+  statics: Array<StaticEvent>;
   spawns: Array<SpawnEvent>;
   moves: Array<MoveEvent>;
   merges: Array<MergeEvent>;
-  score0: number | null;
-  score: number;
+  score: ScoreEvent;
   gameOver: boolean;
 };
 
@@ -57,37 +68,41 @@ class Game {
     this.score = 0;
 
     this.onEvents({
+      statics: [],
       spawns: [this.spawn(), this.spawn()],
       moves: [],
       merges: [],
-      score0: null,
-      score: 0,
+      score: {
+        score: 0,
+        difference: null,
+      },
       gameOver: false,
     });
   }
 
   play(move: Move): void {
-    const x00 = move == Move.Left ? 3 : 0;
+    const x00 = move == Move.Right ? 3 : 0;
     const y00 = move == Move.Down ? 3 : 0;
 
     const [dx, dy] = [
       [0, 1],
-      [1, 0],
-      [0, -1],
       [-1, 0],
+      [0, -1],
+      [1, 0],
     ][move];
 
     const dx0 = 1 - Math.abs(dx);
     const dy0 = 1 - Math.abs(dy);
 
+    const statics: Array<StaticEvent> = [];
     const moves: Array<MoveEvent> = [];
     const merges: Array<MergeEvent> = [];
 
     for (let i = 0; i < 4; i++) {
       const x0 = x00 + i * dx0;
       const y0 = y00 + i * dy0;
-      console.log(x0, y0, dx, dy);
-      const events = this.squash(x0, y0, dx, dy);
+      const events = this.compactLine(x0, y0, dx, dy);
+      statics.push(...events.statics);
       moves.push(...events.moves);
       merges.push(...events.merges);
     }
@@ -97,27 +112,25 @@ class Game {
     }
 
     this.grid.fill(0);
-    for (const move of moves) {
-      this.set(move.x, move.y, move.value);
-    }
-    for (const merge of merges) {
-      this.set(merge.x, merge.y, merge.value);
+    const tiles = statics.concat(moves).concat(merges)
+    for (const tile of tiles) {
+      this.set(tile.x, tile.y, tile.value);
     }
 
-    const score0 = this.score;
+    const scoreDifference = merges.map((merge) => 1 << merge.value0).reduce((total, points) => total + points, 0);
+    this.score += scoreDifference
 
-    this.score += merges
-      .map((merge) => 1 << merge.value0)
-      .reduce((total, points) => total + points, 0);
-
-    const spawn = this.spawn();
+    const spawns = [this.spawn()];
 
     this.onEvents({
+      statics,
       moves,
       merges,
-      spawns: [spawn],
-      score0,
-      score: this.score,
+      spawns,
+      score: {
+        score: this.score,
+        difference: scoreDifference
+      },
       gameOver: this.gameOver(),
     });
   }
@@ -136,26 +149,25 @@ class Game {
 
     const { x, y } = cells[Math.floor(Math.random() * cells.length)];
     this.set(x, y, value);
+    
     return { x, y, value };
   }
 
-  private squash(
+  private compactLine(
     x0: number,
     y0: number,
     dx: number,
     dy: number
-  ): { moves: Array<MoveEvent>; merges: Array<MergeEvent> } {
+  ): { statics: Array<StaticEvent>, moves: Array<MoveEvent>; merges: Array<MergeEvent> } {
+    const statics: Array<StaticEvent> = [];
     const moves: Array<MoveEvent> = [];
     const merges: Array<MergeEvent> = [];
 
     const nonEmptyCells: Array<{ x: number; y: number; value: number }> = [];
-
     for (let i = 0; i < 4; i++) {
       const x = x0 + i * dx;
       const y = y0 + i * dy;
       const value = this.at(x, y);
-
-      console.log(x, y, value);
 
       if (value != 0) {
         nonEmptyCells.push({ x, y, value });
@@ -183,12 +195,14 @@ class Game {
           value: value0 + 1,
         });
         i++;
-      } else {
+      } else if (x != x00 || y != y00) {
         moves.push({ x0: x00, y0: y00, x, y, value: value0 });
+      } else {
+        statics.push({ x, y, value: value0});
       }
     }
 
-    return { moves, merges };
+    return { statics, moves, merges };
   }
 
   private gameOver(): boolean {
