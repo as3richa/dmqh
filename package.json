@@ -2,6 +2,10 @@
   "name": "dmqh",
   "version": "0.0.1",
   "description": "2048 clone in TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:as3richa/dmqh.git"
+  },
   "scripts": {
     "build": "tsc --build",
     "lint": "eslint \"src/*.ts\" --quiet"
