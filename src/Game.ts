@@ -1,5 +1,5 @@
 enum Move {
-  Up = 1,
+  Up = 0,
   Right,
   Down,
   Left,
@@ -67,8 +67,8 @@ class Game {
   }
 
   play(move: Move): void {
-    const x00 = move == Move.Down ? 3 : 0;
-    const y00 = move == Move.Right ? 3 : 0;
+    const x00 = move == Move.Left ? 3 : 0;
+    const y00 = move == Move.Down ? 3 : 0;
 
     const [dx, dy] = [
       [0, 1],
@@ -77,8 +77,8 @@ class Game {
       [-1, 0],
     ][move];
 
-    const dx0 = Math.abs(1 - dx);
-    const dy0 = Math.abs(1 - dy);
+    const dx0 = 1 - Math.abs(dx);
+    const dy0 = 1 - Math.abs(dy);
 
     const moves: Array<MoveEvent> = [];
     const merges: Array<MergeEvent> = [];
@@ -86,6 +86,7 @@ class Game {
     for (let i = 0; i < 4; i++) {
       const x0 = x00 + i * dx0;
       const y0 = y00 + i * dy0;
+      console.log(x0, y0, dx, dy);
       const events = this.squash(x0, y0, dx, dy);
       moves.push(...events.moves);
       merges.push(...events.merges);
@@ -107,7 +108,7 @@ class Game {
 
     this.score += merges
       .map((merge) => 1 << merge.value0)
-      .reduce((total, points) => total + points);
+      .reduce((total, points) => total + points, 0);
 
     const spawn = this.spawn();
 
@@ -137,6 +138,7 @@ class Game {
     this.set(x, y, value);
     return { x, y, value };
   }
+
   private squash(
     x0: number,
     y0: number,
@@ -148,18 +150,20 @@ class Game {
 
     const nonEmptyCells: Array<{ x: number; y: number; value: number }> = [];
 
-    for (let i = 0; i < 4; ) {
+    for (let i = 0; i < 4; i++) {
       const x = x0 + i * dx;
       const y = y0 + i * dy;
       const value = this.at(x, y);
+
+      console.log(x, y, value);
 
       if (value != 0) {
         nonEmptyCells.push({ x, y, value });
       }
     }
 
-    for (let i = 0, k = 0; i < nonEmptyCells.length; i++) {
-      const { x: x0, y: y0, value: value0 } = nonEmptyCells[i];
+    for (let i = 0, k = 0; i < nonEmptyCells.length; i++, k++) {
+      const { x: x00, y: y00, value: value0 } = nonEmptyCells[i];
       const x = x0 + k * dx;
       const y = y0 + k * dy;
 
@@ -168,10 +172,19 @@ class Game {
         nonEmptyCells[i + 1].value == value0
       ) {
         const { x: x1, y: y1 } = nonEmptyCells[i + 1];
-        merges.push({ x0, y0, x1, y1, x, y, value0, value: value0 + 1 });
+        merges.push({
+          x0: x00,
+          y0: y00,
+          x1,
+          y1,
+          x,
+          y,
+          value0,
+          value: value0 + 1,
+        });
         i++;
       } else {
-        moves.push({ x0, y0, x, y, value: value0 });
+        moves.push({ x0: x00, y0: y00, x, y, value: value0 });
       }
     }
 

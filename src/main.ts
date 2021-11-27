@@ -1,3 +1,4 @@
+let engine;
 window.addEventListener("load", () => {
-  new Engine();
+  engine = new Engine();
 });
