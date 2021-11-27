@@ -32,33 +32,7 @@ class Engine {
     };
     window.requestAnimationFrame(drawForever.bind(this));
 
-    window.addEventListener("keydown", (event) => {
-      switch (event.key) {
-        case "Up":
-        case "ArrowUp":
-        case "w":
-          this.game.play(Move.Up);
-          break;
-
-        case "Right":
-        case "ArrowRight":
-        case "d":
-          this.game.play(Move.Right);
-          break;
-
-        case "Down":
-        case "ArrowDown":
-        case "s":
-          this.game.play(Move.Down);
-          break;
-
-        case "Left":
-        case "ArrowLeft":
-        case "a":
-          this.game.play(Move.Left);
-          break;
-      }
-    });
+    window.addEventListener("keydown", this.onKeyDown.bind(this));
   }
 
   private drawFrame(time: number): void {
@@ -72,6 +46,34 @@ class Engine {
       this.context.scale(scale, scale);
       this.context.globalAlpha = opacity;
       entity.primitive.render(this.context);
+    }
+  }
+
+  private onKeyDown(event: KeyboardEvent): void {
+    switch (event.key) {
+      case "Up":
+      case "ArrowUp":
+      case "w":
+        this.game.play(Move.Up);
+        break;
+
+      case "Right":
+      case "ArrowRight":
+      case "d":
+        this.game.play(Move.Right);
+        break;
+
+      case "Down":
+      case "ArrowDown":
+      case "s":
+        this.game.play(Move.Down);
+        break;
+
+      case "Left":
+      case "ArrowLeft":
+      case "a":
+        this.game.play(Move.Left);
+        break;
     }
   }
 
@@ -105,10 +107,12 @@ class Engine {
       this.entities.push({
         primitive: new Tile(move.value),
         animator: new InterpolatingAnimator(
-          { x: x0, y: y0, scale: Engine.cellSize, opacity: 1.0 },
-          { x, y, scale: Engine.cellSize, opacity: 1.0 },
-          time,
-          time + Engine.moveTime
+          [
+            { x: x0, y: y0, scale: Engine.cellSize, opacity: 1.0 },
+            { x, y, scale: Engine.cellSize, opacity: 1.0 },
+          ],
+          [Engine.moveTime],
+          time
         ),
       });
     }
@@ -121,20 +125,24 @@ class Engine {
       this.entities.push({
         primitive: new Tile(merge.value0),
         animator: new InterpolatingAnimator(
-          { x: x0, y: y0, scale: Engine.cellSize, opacity: 1.0 },
-          { x, y, scale: Engine.cellSize, opacity: 1.0 },
-          time,
-          time + Engine.moveTime
+          [
+            { x: x0, y: y0, scale: Engine.cellSize, opacity: 1.0 },
+            { x, y, scale: Engine.cellSize, opacity: 1.0 },
+          ],
+          [Engine.moveTime],
+          time
         ),
       });
 
       this.entities.push({
         primitive: new Tile(merge.value0),
         animator: new InterpolatingAnimator(
-          { x: x1, y: y1, scale: Engine.cellSize, opacity: 1.0 },
-          { x, y, scale: Engine.cellSize, opacity: 1.0 },
-          time,
-          time + Engine.moveTime
+          [
+            { x: x1, y: y1, scale: Engine.cellSize, opacity: 1.0 },
+            { x, y, scale: Engine.cellSize, opacity: 1.0 },
+          ],
+          [Engine.moveTime],
+          time
         ),
       });
     }
@@ -145,10 +153,12 @@ class Engine {
       this.entities.push({
         primitive: new Tile(spawn.value),
         animator: new InterpolatingAnimator(
-          { x, y, scale: Engine.cellSize * 0.25, opacity: 0.25 },
-          { x, y, scale: Engine.cellSize, opacity: 1.0 },
-          time,
-          time + Engine.moveTime
+          [
+            { x, y, scale: Engine.cellSize * 0.25, opacity: 0.25 },
+            { x, y, scale: Engine.cellSize, opacity: 1.0 },
+          ],
+          [Engine.moveTime],
+          time
         ),
       });
     }

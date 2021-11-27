@@ -23,36 +23,53 @@ class StaticAnimator extends Animator {
 }
 
 class InterpolatingAnimator extends Animator {
-  state0: AnimationState;
-  state: AnimationState;
-  startsAt: number;
-  endsAt: number;
+  private states: Array<AnimationState>;
+  private startsAt: Array<number>;
 
   constructor(
-    state0: AnimationState,
-    state: AnimationState,
-    startsAt: number,
-    endsAt: number
+    states: Array<AnimationState>,
+    durations: Array<number>,
+    startsAt: number
   ) {
     super();
-    this.state0 = state0;
-    this.state = state;
-    this.startsAt = startsAt;
-    this.endsAt = endsAt;
+
+    if (durations.length != states.length - 1) {
+      throw new Error("invariant violation");
+    }
+
+    this.states = states;
+    this.startsAt = [startsAt];
+
+    for (let i = 0; i < durations.length; i++) {
+      this.startsAt.push(this.startsAt[i] + durations[i]);
+    }
   }
 
   at(time: number): AnimationState {
-    const p = Math.min(
-      (time - this.startsAt) / (this.endsAt - this.startsAt),
-      1.0
-    );
+    const index = this.startsAt.findIndex((startsAt) => startsAt > time);
+
+    if (index == -1) {
+      return this.states[this.states.length - 1];
+    }
+
+    if (index == 0) {
+      return this.states[0];
+    }
+
+    const state0 = this.states[index - 1];
+    const state = this.states[index];
+
+    const startsAt = this.startsAt[index - 1];
+    const endsAt = this.startsAt[index];
+
+    const p = (time - startsAt) / (endsAt - startsAt);
     const q = 1.0 - p;
 
     return {
-      x: this.state0.x * q + this.state.x * p,
-      y: this.state0.y * q + this.state.y * p,
-      scale: this.state0.scale * q + this.state.scale * p,
-      opacity: this.state0.opacity * q + this.state.opacity * p,
+      x: state0.x * q + state.x * p,
+      y: state0.y * q + state.y * p,
+      scale: state0.scale * q + state.scale * p,
+      opacity: state0.opacity * q + state.opacity * p,
     };
   }
 }
