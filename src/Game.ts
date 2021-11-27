@@ -39,7 +39,7 @@ type MergeEvent = {
 type ScoreEvent = {
   score: number;
   difference: number | null;
-}
+};
 
 type GameEvents = {
   statics: Array<StaticEvent>;
@@ -112,13 +112,15 @@ class Game {
     }
 
     this.grid.fill(0);
-    const tiles = statics.concat(moves).concat(merges)
+    const tiles = statics.concat(moves).concat(merges);
     for (const tile of tiles) {
       this.set(tile.x, tile.y, tile.value);
     }
 
-    const scoreDifference = merges.map((merge) => 1 << merge.value0).reduce((total, points) => total + points, 0);
-    this.score += scoreDifference
+    const scoreDifference = merges
+      .map((merge) => 1 << merge.value0)
+      .reduce((total, points) => total + points, 0);
+    this.score += scoreDifference;
 
     const spawns = [this.spawn()];
 
@@ -129,7 +131,7 @@ class Game {
       spawns,
       score: {
         score: this.score,
-        difference: scoreDifference
+        difference: scoreDifference,
       },
       gameOver: this.gameOver(),
     });
@@ -149,7 +151,7 @@ class Game {
 
     const { x, y } = cells[Math.floor(Math.random() * cells.length)];
     this.set(x, y, value);
-    
+
     return { x, y, value };
   }
 
@@ -158,7 +160,11 @@ class Game {
     y0: number,
     dx: number,
     dy: number
-  ): { statics: Array<StaticEvent>, moves: Array<MoveEvent>; merges: Array<MergeEvent> } {
+  ): {
+    statics: Array<StaticEvent>;
+    moves: Array<MoveEvent>;
+    merges: Array<MergeEvent>;
+  } {
     const statics: Array<StaticEvent> = [];
     const moves: Array<MoveEvent> = [];
     const merges: Array<MergeEvent> = [];
@@ -198,7 +204,7 @@ class Game {
       } else if (x != x00 || y != y00) {
         moves.push({ x0: x00, y0: y00, x, y, value: value0 });
       } else {
-        statics.push({ x, y, value: value0});
+        statics.push({ x, y, value: value0 });
       }
     }
 

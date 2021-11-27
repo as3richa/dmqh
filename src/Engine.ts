@@ -17,13 +17,14 @@ class Engine {
 
   constructor() {
     this.entities = [];
+
     this.game = new Game(this.onEvents.bind(this));
+
     const canvas = document.createElement("canvas");
     canvas.width = Engine.canvasWidth;
     canvas.height = Engine.canvasHeight;
-    document.body.appendChild(canvas);
-
     this.context = canvas.getContext("2d");
+    document.body.appendChild(canvas);
 
     const drawForever = (time: number) => {
       this.drawFrame(time);
@@ -59,8 +60,13 @@ class Engine {
       const { x, y } = cellToCanvas(static_.x, static_.y);
 
       this.entities.push({
-        primitive: new RedRectangle(),
-        animator: new StaticAnimator({ x, y, scale: Engine.cellSize, opacity: 1.0 }),
+        primitive: new Tile(static_.value),
+        animator: new StaticAnimator({
+          x,
+          y,
+          scale: Engine.cellSize,
+          opacity: 1.0,
+        }),
       });
     }
 
@@ -69,7 +75,7 @@ class Engine {
       const { x, y } = cellToCanvas(move.x, move.y);
 
       this.entities.push({
-        primitive: new RedRectangle(),
+        primitive: new Tile(move.value),
         animator: new InterpolatingAnimator(
           { x: x0, y: y0, scale: Engine.cellSize, opacity: 1.0 },
           { x, y, scale: Engine.cellSize, opacity: 1.0 },
@@ -80,13 +86,12 @@ class Engine {
     }
 
     for (const merge of events.merges) {
-      console.log(merge);
       const { x: x0, y: y0 } = cellToCanvas(merge.x0, merge.y0);
       const { x: x1, y: y1 } = cellToCanvas(merge.x1, merge.y1);
       const { x, y } = cellToCanvas(merge.x, merge.y);
 
       this.entities.push({
-        primitive: new RedRectangle(),
+        primitive: new Tile(merge.value0),
         animator: new InterpolatingAnimator(
           { x: x0, y: y0, scale: Engine.cellSize, opacity: 1.0 },
           { x, y, scale: Engine.cellSize, opacity: 1.0 },
@@ -96,7 +101,7 @@ class Engine {
       });
 
       this.entities.push({
-        primitive: new RedRectangle(),
+        primitive: new Tile(merge.value0),
         animator: new InterpolatingAnimator(
           { x: x1, y: y1, scale: Engine.cellSize, opacity: 1.0 },
           { x, y, scale: Engine.cellSize, opacity: 1.0 },
@@ -110,7 +115,7 @@ class Engine {
       const { x, y } = cellToCanvas(spawn.x, spawn.y);
 
       this.entities.push({
-        primitive: new RedRectangle(),
+        primitive: new Tile(spawn.value),
         animator: new InterpolatingAnimator(
           { x, y, scale: Engine.cellSize * 0.25, opacity: 0.25 },
           { x, y, scale: Engine.cellSize, opacity: 1.0 },
