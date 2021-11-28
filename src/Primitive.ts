@@ -6,14 +6,17 @@ class Tile extends Primitive {
   private value: number;
 
   private static readonly colors = [
-    "#abb2bf",
-    "#c678dd",
-    "#56b6c2",
-    "#61afef",
-    "#5c6370",
-    "#98c379",
-    "#d19a66",
-    "#e5c07b",
+    "#4ec9b0",
+    "#4fc1ff",
+    "#569cd6",
+    "#9cdcfe",
+    "#b5cea8",
+    "#c586c0",
+    "#c8c8c8",
+    "#ce9178",
+    "#d16969",
+    "#d7ba7d",
+    "#dcdcaa",
   ];
 
   constructor(value: number) {
