@@ -6,24 +6,33 @@ type Entity = {
 class Engine {
   private game: Game;
   private context: CanvasRenderingContext2D;
-  private entities: Array<Entity>;
+  private uiEntities: Array<Entity>;
+  private gameEntities: Array<Entity>;
 
   private static readonly canvasWidth = 500;
-  private static readonly canvasHeight = 500;
+  private static readonly canvasHeight = 650;
 
-  private static readonly cellSize = 125;
-  private static readonly tileSize = 112;
+  private static readonly gridSize = 500;
+  private static readonly gridPadding = 8;
+  private static readonly gridRadius = 5;
+  private static readonly gridTop = Engine.canvasHeight - Engine.gridSize;
 
-  private static readonly moveDuration = 150;
+  private static readonly cellSize =
+    (Engine.gridSize - 2 * Engine.gridPadding) / 4;
+  private static readonly tileSize = 100;
+
+  private static readonly moveDuration = 125;
 
   constructor() {
-    this.entities = [];
-
+    this.gameEntities = [];
     this.game = new Game(this.onGameEvents.bind(this));
 
     const canvas = document.createElement("canvas");
     canvas.width = Engine.canvasWidth;
     canvas.height = Engine.canvasHeight;
+    canvas.style.marginLeft = "auto";
+    canvas.style.marginRight = "auto";
+    canvas.style.display = "block";
     this.context = canvas.getContext("2d");
     document.body.appendChild(canvas);
 
@@ -38,9 +47,12 @@ class Engine {
 
   private drawFrame(time: number): void {
     this.context.resetTransform();
-    this.context.clearRect(0, 0, Engine.canvasWidth, Engine.canvasHeight);
+    this.context.globalAlpha = 1.0;
 
-    for (const entity of this.entities) {
+    this.context.clearRect(0, 0, Engine.canvasWidth, Engine.canvasHeight);
+    this.drawUiElements();
+
+    for (const entity of this.gameEntities) {
       const { x, y, scale, opacity } = entity.animator.at(time);
       this.context.resetTransform();
       this.context.translate(x, y);
@@ -51,6 +63,8 @@ class Engine {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    let handled = true;
+
     switch (event.key) {
       case "Up":
       case "ArrowUp":
@@ -75,13 +89,41 @@ class Engine {
       case "a":
         this.game.play(Move.Left);
         break;
+
+      default:
+        handled = false;
     }
+
+    if (handled) {
+      event.preventDefault();
+    }
+  }
+
+  private drawUiElements() {
+    this.context.fillStyle = "#4a4a4a";
+
+    fillRoundedRectangle(
+      this.context,
+      0,
+      Engine.gridTop,
+      Engine.gridSize,
+      Engine.gridSize,
+      Engine.gridRadius
+    );
+
+    new SevenSegmentFont(50).fillText(
+      this.context,
+      "0123456789dvqh",
+      0,
+      0,
+      "topleft"
+    );
   }
 
   private onGameEvents(events: GameEvents): void {
     const startsAt = performance.now();
 
-    this.entities = [];
+    this.gameEntities = [];
 
     this.animateStatics(events.statics);
 
@@ -98,13 +140,13 @@ class Engine {
     for (const static_ of statics) {
       const { x, y } = this.cellToCanvas(static_.x, static_.y);
 
-      this.entities.push({
+      this.gameEntities.push({
         primitive: new Tile(static_.value),
         animator: new StaticAnimator({
           x,
           y,
           scale: Engine.tileSize,
-          opacity: 1.0,
+          opacity: 1,
         }),
       });
     }
@@ -119,12 +161,12 @@ class Engine {
       const { x: x0, y: y0 } = this.cellToCanvas(move.x0, move.y0);
       const { x, y } = this.cellToCanvas(move.x, move.y);
 
-      this.entities.push({
+      this.gameEntities.push({
         primitive: new Tile(move.value),
         animator: new InterpolatingAnimator(
           [
-            { x: x0, y: y0, scale: Engine.tileSize, opacity: 1.0 },
-            { x, y, scale: Engine.tileSize, opacity: 1.0 },
+            { x: x0, y: y0, scale: Engine.tileSize, opacity: 1 },
+            { x, y, scale: Engine.tileSize, opacity: 1 },
           ],
           [Engine.moveDuration],
           startsAt
@@ -137,28 +179,28 @@ class Engine {
       const { x: x1, y: y1 } = this.cellToCanvas(merge.x1, merge.y1);
       const { x, y } = this.cellToCanvas(merge.x, merge.y);
 
-      this.entities.push({
+      this.gameEntities.push({
         primitive: new Tile(merge.value0),
         animator: new InterpolatingAnimator(
           [
-            { x: x0, y: y0, scale: Engine.tileSize, opacity: 1.0 },
-            { x, y, scale: Engine.tileSize, opacity: 1.0 },
-            { x, y, scale: Engine.tileSize, opacity: 0.0 },
+            { x: x0, y: y0, scale: Engine.tileSize, opacity: 1 },
+            { x, y, scale: Engine.tileSize, opacity: 1 },
+            { x, y, scale: Engine.tileSize, opacity: 0 },
           ],
-          [Engine.moveDuration, 0.0],
+          [Engine.moveDuration, 0],
           startsAt
         ),
       });
 
-      this.entities.push({
+      this.gameEntities.push({
         primitive: new Tile(merge.value0),
         animator: new InterpolatingAnimator(
           [
-            { x: x1, y: y1, scale: Engine.tileSize, opacity: 1.0 },
-            { x, y, scale: Engine.tileSize, opacity: 1.0 },
-            { x, y, scale: Engine.tileSize, opacity: 0.0 },
+            { x: x1, y: y1, scale: Engine.tileSize, opacity: 1 },
+            { x, y, scale: Engine.tileSize, opacity: 1 },
+            { x, y, scale: Engine.tileSize, opacity: 0 },
           ],
-          [Engine.moveDuration, 0.0],
+          [Engine.moveDuration, 0],
           startsAt
         ),
       });
@@ -169,12 +211,12 @@ class Engine {
     for (const spawn of spawns) {
       const { x, y } = this.cellToCanvas(spawn.x, spawn.y);
 
-      this.entities.push({
+      this.gameEntities.push({
         primitive: new Tile(spawn.value),
         animator: new InterpolatingAnimator(
           [
             { x, y, scale: 0, opacity: 0 },
-            { x, y, scale: Engine.tileSize, opacity: 1.0 },
+            { x, y, scale: Engine.tileSize, opacity: 1 },
           ],
           [Engine.moveDuration],
           startsAt
@@ -187,14 +229,14 @@ class Engine {
     for (const merge of merges) {
       const { x, y } = this.cellToCanvas(merge.x, merge.y);
 
-      this.entities.push({
+      this.gameEntities.push({
         primitive: new Tile(merge.value),
         animator: new InterpolatingAnimator(
           [
-            { x, y, scale: Engine.tileSize, opacity: 0.0 },
-            { x, y, scale: Engine.tileSize, opacity: 1.0 },
-            { x, y, scale: Engine.cellSize, opacity: 1.0 },
-            { x, y, scale: Engine.tileSize, opacity: 1.0 },
+            { x, y, scale: Engine.tileSize, opacity: 0 },
+            { x, y, scale: Engine.tileSize, opacity: 1 },
+            { x, y, scale: Engine.cellSize, opacity: 1 },
+            { x, y, scale: Engine.tileSize, opacity: 1 },
           ],
           [0, Engine.moveDuration / 2, Engine.moveDuration / 2],
           startsAt
@@ -204,6 +246,9 @@ class Engine {
   }
 
   private cellToCanvas(x: number, y: number): { x: number; y: number } {
-    return { x: (x + 0.5) * Engine.cellSize, y: (y + 0.5) * Engine.cellSize };
+    return {
+      x: Engine.gridPadding + (x + 0.5) * Engine.cellSize,
+      y: Engine.gridTop + Engine.gridPadding + (y + 0.5) * Engine.cellSize,
+    };
   }
 }
