@@ -117,10 +117,13 @@ class Game {
       this.set(tile.x, tile.y, tile.value);
     }
 
-    const scoreDifference = merges
-      .map((merge) => 1 << merge.value0)
-      .reduce((total, points) => total + points, 0);
-    this.score += scoreDifference;
+    const scoreDifference =
+      merges.length == 0
+        ? null
+        : merges
+            .map((merge) => 1 << merge.value)
+            .reduce((total, points) => total + points);
+    this.score += scoreDifference || 0;
 
     const spawns = [this.spawn()];
 

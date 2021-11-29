@@ -6,9 +6,8 @@ class Tile extends Primitive {
   private text: string;
   private tileColor: string;
   private textColor: string;
+  private radius: number;
   private font: SevenSegmentFont;
-
-  private static readonly emptyCellColor = "#333333";
 
   private static readonly lightTextColor = "#eeeeee";
   private static readonly darkTextColor = "#1e1e1e";
@@ -27,11 +26,15 @@ class Tile extends Primitive {
     ["#dcdcaa", Tile.darkTextColor],
   ];
 
-  constructor(value: number) {
+  constructor(value: number, radius: number) {
     super();
+
     this.text = (1 << value).toString();
+
     [this.tileColor, this.textColor] =
       Tile.colors[(value - 1) % Tile.colors.length];
+
+    this.radius = radius;
 
     const fontSize = Math.min(
       0.7,
@@ -42,7 +45,7 @@ class Tile extends Primitive {
 
   render(context: CanvasRenderingContext2D): void {
     context.fillStyle = this.tileColor;
-    fillRoundedRectangle(context, -0.5, -0.5, 1, 1, 0.05);
+    fillRoundedRectangle(context, -0.5, -0.5, 1, 1, this.radius);
     context.fillStyle = this.textColor;
     this.font.fillText(context, this.text, 0, 0, "center");
   }
@@ -59,6 +62,7 @@ class RoundedSquare extends Primitive {
   }
 
   render(context: CanvasRenderingContext2D): void {
+    context.fillStyle = this.color;
     fillRoundedRectangle(context, -0.5, -0.5, 1.0, 1.0, this.radius);
   }
 }
@@ -78,6 +82,7 @@ class Textual extends Primitive {
   }
 
   render(context: CanvasRenderingContext2D): void {
+    context.fillStyle = this.color;
     this.font.fillText(context, this.text, 0, 0, this.align);
   }
 }

@@ -10,22 +10,85 @@ class Engine {
   private gameEntities: Array<Entity>;
 
   private static readonly canvasWidth = 500;
-  private static readonly canvasHeight = 650;
+  private static readonly canvasHeight = 600;
 
   private static readonly gridSize = 500;
   private static readonly gridPadding = 8;
-  private static readonly gridRadius = 5;
+  private static readonly gridRadius = 0.02;
   private static readonly gridTop = Engine.canvasHeight - Engine.gridSize;
 
   private static readonly cellSize =
     (Engine.gridSize - 2 * Engine.gridPadding) / 4;
+
   private static readonly tileSize = 100;
+  private static readonly tileRadius = 0.05;
+
+  private static readonly titleSize = 75;
+  private static readonly textSize = 30;
+
+  private static readonly titlePosition = {
+    x: Engine.gridPadding,
+    y: Engine.gridPadding,
+  };
+
+  private static readonly scorePosition = {
+    x: Engine.gridSize - Engine.gridPadding - Engine.cellSize / 2,
+    y: Engine.gridTop / 2,
+  };
+
+  private static readonly gridColor = "#4a4a4a";
+  private static readonly emptyCellColor = "#454545";
+  private static readonly textColor = "#505050";
+  private static readonly pointsTextColor = "#00dd00";
+  private static readonly gameOverTextColor = "#ee0000";
 
   private static readonly moveDuration = 125;
+  private static readonly textFadeDuration = 400;
+
+  private static readonly swipeThreshold = Engine.gridSize / 5;
 
   constructor() {
     this.gameEntities = [];
     this.game = new Game(this.onGameEvents.bind(this));
+
+    this.uiEntities = [];
+
+    this.uiEntities.push({
+      primitive: new Textual("dmqh", Engine.textColor, "topleft"),
+      animator: new StaticAnimator({
+        ...Engine.titlePosition,
+        scale: Engine.titleSize,
+        opacity: 1.0,
+      }),
+    });
+
+    this.uiEntities.push({
+      primitive: new RoundedSquare(Engine.gridColor, Engine.gridRadius),
+      animator: new StaticAnimator({
+        x: Engine.gridSize / 2,
+        y: Engine.gridTop + Engine.gridSize / 2,
+        scale: Engine.gridSize,
+        opacity: 1.0,
+      }),
+    });
+
+    for (let x = 0; x < 4; x++) {
+      for (let y = 0; y < 4; y++) {
+        const { x: canvasX, y: canvasY } = this.cellToCanvas(x, y);
+        this.uiEntities.push({
+          primitive: new RoundedSquare(
+            Engine.emptyCellColor,
+            Engine.tileRadius
+          ),
+          animator: new StaticAnimator({
+            x: canvasX,
+            y: canvasY,
+            scale: Engine.tileSize,
+            opacity: 1.0,
+          }),
+        });
+      }
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = Engine.canvasWidth;
@@ -43,6 +106,8 @@ class Engine {
     window.requestAnimationFrame(drawForever.bind(this));
 
     window.addEventListener("keydown", this.onKeyDown.bind(this));
+
+    this.handleTouchEvents(canvas);
   }
 
   private drawFrame(time: number): void {
@@ -50,9 +115,8 @@ class Engine {
     this.context.globalAlpha = 1.0;
 
     this.context.clearRect(0, 0, Engine.canvasWidth, Engine.canvasHeight);
-    this.drawUiElements();
 
-    for (const entity of this.gameEntities) {
+    for (const entity of this.uiEntities.concat(this.gameEntities)) {
       const { x, y, scale, opacity } = entity.animator.at(time);
       this.context.resetTransform();
       this.context.translate(x, y);
@@ -99,25 +163,40 @@ class Engine {
     }
   }
 
-  private drawUiElements() {
-    this.context.fillStyle = "#4a4a4a";
+  private handleTouchEvents(canvas: HTMLCanvasElement): void {
+    let origin = null;
 
-    fillRoundedRectangle(
-      this.context,
-      0,
-      Engine.gridTop,
-      Engine.gridSize,
-      Engine.gridSize,
-      Engine.gridRadius
-    );
+    canvas.addEventListener("touchstart", (event) => {
+      const bounds = canvas.getBoundingClientRect();
+      const touch = event.changedTouches[0];
+      origin = {
+        x: touch.clientX - bounds.left,
+        y: touch.clientY - bounds.top,
+      };
+    });
 
-    new SevenSegmentFont(50).fillText(
-      this.context,
-      "0123456789dvqh",
-      0,
-      0,
-      "topleft"
-    );
+    canvas.addEventListener("touchend", (event) => {
+      const bounds = canvas.getBoundingClientRect();
+      const touch = event.changedTouches[0];
+      const point = {
+        x: touch.clientX - bounds.left,
+        y: touch.clientY - bounds.top,
+      };
+      const differences = { x: point.x - origin.x, y: point.y - origin.y };
+
+      origin = null;
+
+      if (
+        Math.abs(differences.x) > Engine.swipeThreshold !==
+        Math.abs(differences.y) > Engine.swipeThreshold
+      ) {
+        if (Math.abs(differences.x) > Engine.swipeThreshold) {
+          this.game.play(differences.x > 0 ? Move.Right : Move.Left);
+        } else {
+          this.game.play(differences.y > 0 ? Move.Down : Move.Up);
+        }
+      }
+    });
   }
 
   private onGameEvents(events: GameEvents): void {
@@ -126,6 +205,7 @@ class Engine {
     this.gameEntities = [];
 
     this.animateStatics(events.statics);
+    this.animateScore(events.score, startsAt);
 
     if (events.moves.length == 0 && events.merges.length == 0) {
       this.animateSpawns(events.spawns, startsAt);
@@ -133,6 +213,10 @@ class Engine {
       this.animateMoves(events.moves, events.merges, startsAt);
       this.animateSpawns(events.spawns, startsAt + Engine.moveDuration);
       this.animateMerges(events.merges, startsAt + Engine.moveDuration);
+
+      if (events.gameOver) {
+        this.animateGameOver(startsAt + 2 * Engine.moveDuration);
+      }
     }
   }
 
@@ -141,7 +225,7 @@ class Engine {
       const { x, y } = this.cellToCanvas(static_.x, static_.y);
 
       this.gameEntities.push({
-        primitive: new Tile(static_.value),
+        primitive: new Tile(static_.value, Engine.tileRadius),
         animator: new StaticAnimator({
           x,
           y,
@@ -162,7 +246,7 @@ class Engine {
       const { x, y } = this.cellToCanvas(move.x, move.y);
 
       this.gameEntities.push({
-        primitive: new Tile(move.value),
+        primitive: new Tile(move.value, Engine.tileRadius),
         animator: new InterpolatingAnimator(
           [
             { x: x0, y: y0, scale: Engine.tileSize, opacity: 1 },
@@ -180,7 +264,7 @@ class Engine {
       const { x, y } = this.cellToCanvas(merge.x, merge.y);
 
       this.gameEntities.push({
-        primitive: new Tile(merge.value0),
+        primitive: new Tile(merge.value0, Engine.tileRadius),
         animator: new InterpolatingAnimator(
           [
             { x: x0, y: y0, scale: Engine.tileSize, opacity: 1 },
@@ -193,7 +277,7 @@ class Engine {
       });
 
       this.gameEntities.push({
-        primitive: new Tile(merge.value0),
+        primitive: new Tile(merge.value0, Engine.tileRadius),
         animator: new InterpolatingAnimator(
           [
             { x: x1, y: y1, scale: Engine.tileSize, opacity: 1 },
@@ -212,7 +296,7 @@ class Engine {
       const { x, y } = this.cellToCanvas(spawn.x, spawn.y);
 
       this.gameEntities.push({
-        primitive: new Tile(spawn.value),
+        primitive: new Tile(spawn.value, Engine.tileRadius),
         animator: new InterpolatingAnimator(
           [
             { x, y, scale: 0, opacity: 0 },
@@ -230,7 +314,7 @@ class Engine {
       const { x, y } = this.cellToCanvas(merge.x, merge.y);
 
       this.gameEntities.push({
-        primitive: new Tile(merge.value),
+        primitive: new Tile(merge.value, Engine.tileRadius),
         animator: new InterpolatingAnimator(
           [
             { x, y, scale: Engine.tileSize, opacity: 0 },
@@ -243,6 +327,66 @@ class Engine {
         ),
       });
     }
+  }
+
+  private animateScore(score: ScoreEvent, startsAt: number): void {
+    const { x, y } = Engine.scorePosition;
+
+    this.gameEntities.push({
+      primitive: new Textual(
+        score.score.toString(),
+        Engine.textColor,
+        "center"
+      ),
+      animator: new StaticAnimator({
+        x,
+        y,
+        scale: Engine.textSize,
+        opacity: 1.0,
+      }),
+    });
+
+    if (score.difference !== null) {
+      this.gameEntities.push({
+        primitive: new Textual(
+          score.difference.toString(),
+          Engine.pointsTextColor,
+          "center"
+        ),
+        animator: new InterpolatingAnimator(
+          [
+            { x, y, scale: Engine.textSize, opacity: 1.0 },
+            { x, y: 0, scale: Engine.textSize, opacity: 0.0 },
+          ],
+          [Engine.textFadeDuration],
+          startsAt
+        ),
+      });
+    }
+  }
+
+  private animateGameOver(startsAt: number): void {
+    this.gameEntities.push({
+      primitive: new Textual("game over", Engine.gameOverTextColor, "center"),
+      animator: new InterpolatingAnimator(
+        [
+          {
+            x: Engine.gridSize / 2,
+            y: Engine.gridTop + Engine.gridSize / 2,
+            scale: Engine.titleSize,
+            opacity: 0,
+          },
+          {
+            x: Engine.gridSize / 2,
+            y: Engine.gridTop + Engine.gridSize / 2,
+            scale: Engine.titleSize,
+            opacity: 1,
+          },
+        ],
+        [Engine.textFadeDuration],
+        startsAt
+      ),
+    });
   }
 
   private cellToCanvas(x: number, y: number): { x: number; y: number } {
