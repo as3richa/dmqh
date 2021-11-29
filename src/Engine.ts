@@ -4,13 +4,15 @@ type Entity = {
 };
 
 class Engine {
-  private game: Game;
+  private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
+  private game: Game;
   private uiEntities: Array<Entity>;
   private gameEntities: Array<Entity>;
 
   private static readonly canvasWidth = 500;
   private static readonly canvasHeight = 600;
+  private static readonly canvasMargin = 16;
 
   private static readonly gridSize = 500;
   private static readonly gridPadding = 8;
@@ -45,12 +47,45 @@ class Engine {
   private static readonly moveDuration = 125;
   private static readonly textFadeDuration = 400;
 
-  private static readonly swipeThreshold = Engine.gridSize / 5;
+  private static readonly swipeThreshold = Engine.gridSize / 8;
 
   constructor() {
     this.gameEntities = [];
-    this.game = new Game(this.onGameEvents.bind(this));
+    this.initializeUiEntities();
 
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = Engine.canvasWidth;
+    this.canvas.height = Engine.canvasHeight;
+    this.canvas.style.display = "block";
+    this.canvas.style.marginTop =
+      this.canvas.style.marginBottom = `${Engine.canvasMargin}px`;
+    this.canvas.style.marginLeft = this.canvas.style.marginRight = "auto";
+
+    window.addEventListener("resize", this.resizeCanvas.bind(this));
+    this.resizeCanvas();
+
+    document.body.appendChild(this.canvas);
+
+    this.context = this.canvas.getContext("2d");
+
+    const renderForever = (time: number) => {
+      this.renderFrame(time);
+      window.requestAnimationFrame(renderForever);
+    };
+    window.requestAnimationFrame(renderForever.bind(this));
+
+    window.addEventListener("keydown", this.onKeyDown.bind(this));
+
+    new SwipeHandler(
+      this.canvas,
+      Engine.swipeThreshold,
+      this.onSwipe.bind(this)
+    );
+
+    this.game = new Game(this.onGameEvents.bind(this));
+  }
+
+  private initializeUiEntities(): void {
     this.uiEntities = [];
 
     this.uiEntities.push({
@@ -89,40 +124,27 @@ class Engine {
         });
       }
     }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Engine.canvasWidth;
-    canvas.height = Engine.canvasHeight;
-    canvas.style.marginLeft = "auto";
-    canvas.style.marginRight = "auto";
-    canvas.style.display = "block";
-    this.context = canvas.getContext("2d");
-    document.body.appendChild(canvas);
-
-    const drawForever = (time: number) => {
-      this.drawFrame(time);
-      window.requestAnimationFrame(drawForever);
-    };
-    window.requestAnimationFrame(drawForever.bind(this));
-
-    window.addEventListener("keydown", this.onKeyDown.bind(this));
-
-    this.handleTouchEvents(canvas);
   }
 
-  private drawFrame(time: number): void {
-    this.context.resetTransform();
-    this.context.globalAlpha = 1.0;
+  private resizeCanvas(): void {
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
 
-    this.context.clearRect(0, 0, Engine.canvasWidth, Engine.canvasHeight);
-
-    for (const entity of this.uiEntities.concat(this.gameEntities)) {
-      const { x, y, scale, opacity } = entity.animator.at(time);
-      this.context.resetTransform();
-      this.context.translate(x, y);
-      this.context.scale(scale, scale);
-      this.context.globalAlpha = opacity;
-      entity.primitive.render(this.context);
+    if (
+      viewportWidth < Engine.canvasWidth + 2 * Engine.canvasMargin ||
+      viewportHeight < Engine.canvasHeight + 2 * Engine.canvasMargin
+    ) {
+      const width = Math.min(
+        viewportWidth - 2 * Engine.canvasMargin,
+        ((viewportHeight - 2 * Engine.canvasMargin) / Engine.canvasHeight) *
+          Engine.canvasWidth
+      );
+      const height = (width / Engine.canvasWidth) * Engine.canvasHeight;
+      this.canvas.style.width = `${Math.ceil(width)}px`;
+      this.canvas.style.height = `${Math.ceil(height)}px`;
+    } else {
+      this.canvas.style.width = `${Engine.canvasWidth}px`;
+      this.canvas.style.height = `${Engine.canvasHeight}px`;
     }
   }
 
@@ -163,40 +185,24 @@ class Engine {
     }
   }
 
-  private handleTouchEvents(canvas: HTMLCanvasElement): void {
-    let origin = null;
+  private onSwipe(direction: SwipeDirection): void {
+    switch (direction) {
+      case SwipeDirection.Up:
+        this.game.play(Move.Up);
+        break;
 
-    canvas.addEventListener("touchstart", (event) => {
-      const bounds = canvas.getBoundingClientRect();
-      const touch = event.changedTouches[0];
-      origin = {
-        x: touch.clientX - bounds.left,
-        y: touch.clientY - bounds.top,
-      };
-    });
+      case SwipeDirection.Right:
+        this.game.play(Move.Right);
+        break;
 
-    canvas.addEventListener("touchend", (event) => {
-      const bounds = canvas.getBoundingClientRect();
-      const touch = event.changedTouches[0];
-      const point = {
-        x: touch.clientX - bounds.left,
-        y: touch.clientY - bounds.top,
-      };
-      const differences = { x: point.x - origin.x, y: point.y - origin.y };
+      case SwipeDirection.Down:
+        this.game.play(Move.Down);
+        break;
 
-      origin = null;
-
-      if (
-        Math.abs(differences.x) > Engine.swipeThreshold !==
-        Math.abs(differences.y) > Engine.swipeThreshold
-      ) {
-        if (Math.abs(differences.x) > Engine.swipeThreshold) {
-          this.game.play(differences.x > 0 ? Move.Right : Move.Left);
-        } else {
-          this.game.play(differences.y > 0 ? Move.Down : Move.Up);
-        }
-      }
-    });
+      case SwipeDirection.Left:
+        this.game.play(Move.Left);
+        break;
+    }
   }
 
   private onGameEvents(events: GameEvents): void {
@@ -217,6 +223,22 @@ class Engine {
       if (events.gameOver) {
         this.animateGameOver(startsAt + 2 * Engine.moveDuration);
       }
+    }
+  }
+
+  private renderFrame(time: number): void {
+    this.context.resetTransform();
+    this.context.globalAlpha = 1.0;
+
+    this.context.clearRect(0, 0, Engine.canvasWidth, Engine.canvasHeight);
+
+    for (const entity of this.uiEntities.concat(this.gameEntities)) {
+      const { x, y, scale, opacity } = entity.animator.at(time);
+      this.context.resetTransform();
+      this.context.translate(x, y);
+      this.context.scale(scale, scale);
+      this.context.globalAlpha = opacity;
+      entity.primitive.render(this.context);
     }
   }
 

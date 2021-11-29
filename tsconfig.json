@@ -3,6 +3,7 @@
     "rootDir": "src",
     "outFile": "dmqh.js",
     "lib": ["ES6"],
-    "target": "ES5"
+    "target": "ES5",
+    "downlevelIteration": true
   }
 }
